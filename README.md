@@ -3,7 +3,7 @@ This plugin is designed to be a drag and drop anti-cheat. While making and testi
 
 # Dependencies
 - [SteamWorks](https://github.com/KyleSanderson/SteamWorks) (required)
-- [Sourcebans++](https://github.com/sbpp/sourcebans-pp) (optional, newone) or [Sourcebans](https://code.google.com/archive/p/sourcebans/) (optional, old)
+- [Sourcebans++](https://github.com/sbpp/sourcebans-pp) (optional, newone) or [Sourcebans](https://github.com/GameConnect/sourcebansv1) (optional, old)
 
 # Detections
     Aimbot
