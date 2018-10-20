@@ -26,7 +26,10 @@
 #include <sdktools>
 #include <SteamWorks>
 #undef REQUIRE_PLUGIN
-#include <sourcebanspp>
+#tryinclude <sourcebanspp>
+#if !defined _sourcebanspp_included
+	#tryinclude <sourcebans>
+#endif
 
 #pragma newdecls required
 
@@ -39,14 +42,6 @@ public Plugin myinfo =
 	url = ""
 };
 
-enum BanMethod
-{
-	SourceModBan,
-	SourceBans,
-	SourceBansPP
-}
-
-BanMethod ban_method = SourceModBan;
 EngineVersion game_engine = Engine_Unknown;
 
 bool g_bAngleSet[MAXPLAYERS + 1];
@@ -132,6 +127,8 @@ public void OnPluginStart()
 {
 	game_engine = GetEngineVersion();
 
+	BanMethodTypePrintToServer();
+
 	for (int i = 1; i <= MaxClients; i++)
 		SetToDefaults(i);
 	
@@ -187,28 +184,6 @@ public void SetConVars()
 	AutoExecConfig(true, "cowanticheat");
 }
 
-public void OnAllPluginsLoaded()
-{
-	if(LibraryExists("sbpp_main"))
-	{
-		ban_method = SourceBansPP;
-
-		return;
-	}
-}
-
-public void OnLibraryRemoved(const char[] name)
-{
-	if(StrEqual(name, "sbpp_main"))
-		ban_method = SourceModBan;
-}
-
-public void OnLibraryAdded(const char[] name)
-{
-	if(StrEqual(name, "sbpp_main"))
-		ban_method = SourceBansPP;
-}
-
 public void OnClientPutInServer(int client)
 {
 	SetToDefaults(client);
@@ -220,6 +195,7 @@ public void OnClientPutInServer(int client)
 			Handle request = CreateRequest_ProfileStatus(client);
 			SteamWorks_SendHTTPRequest(request);
 		}
+		
 		if(sm_cac_hourcheck.BoolValue)
 		{
 			Handle request = CreateRequest_TimePlayed(client);
@@ -1187,18 +1163,30 @@ public float GetClientVelocity(int client, bool UseX, bool UseY, bool UseZ)
     return GetVectorLength(vVel);
 }
 
-void BanPlayer(int client, int time, const char[] reason)
+stock void BanPlayer(int client, int time, char[] reason)
 {
-	switch(ban_method)
-	{
-		case SourceBansPP: 
-		{
-			SBPP_BanPlayer(SERVER, client, time, reason);
-		}
-
-		default:
-		{
+	#if defined _sourcebanspp_included
+		SBPP_BanPlayer(SERVER, client, time, reason);
+	#else
+		#if defined _sourcebans_included
+			SBBanPlayer(SERVER, client, time, reason);
+		#else
 			BanClient(client, time, BANFLAG_AUTO, reason);
-		}
-	}
+		#endif
+	#endif
+}
+
+// Give info to console which banning method will be used,
+// directly depends on compiling, please look at #tryinclude directive.
+stock void BanMethodTypePrintToServer()
+{
+	#if defined _sourcebanspp_included
+		PrintToServer("[CowAC] Banning players in the new way via Sourcebans++");
+	#else
+		#if defined _sourcebans_included
+			PrintToServer("[CowAC] Banning players in the old way via Sourcebans");
+		#else
+			PrintToServer("[CowAC] Banning players in the standard way via SourceMod");
+		#endif
+	#endif
 }
