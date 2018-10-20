@@ -31,6 +31,8 @@ There is a config generated (/cfg/CowAntiCheat/CowAntiCheat.cfg)<br />
     Edit the Config (/cfg/CowAntiCheat/CowAntiCheat.cfg)
     Watch the bans roll in!
 
+# ChangeLog
+
 ## [1.16] - 2018-04-12
 ### Added
 - Removed Air-Stuck Issue
@@ -58,7 +60,6 @@ There is a config generated (/cfg/CowAntiCheat/CowAntiCheat.cfg)<br />
 ### Added
 - AHK/MSL Strafe Detection Updated.
 
-# ChangeLog
 ## [1.10] - 2018-02-02
 ### Added
 - Sourcebans++ Optional Dependency
