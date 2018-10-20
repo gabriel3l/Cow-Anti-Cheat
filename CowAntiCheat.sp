@@ -19,7 +19,6 @@
 
 #define PLUGIN_AUTHOR "CodingCow"
 #define PLUGIN_VERSION "1.17"
-#define REQUIRE_PLUGIN 0
 #define JUMP_HISTORY 30
 #define SERVER 0
 
@@ -27,7 +26,6 @@
 #include <sdktools>
 #include <SteamWorks>
 #undef REQUIRE_PLUGIN
-#include <sourcebans>
 #include <sourcebanspp>
 
 #pragma newdecls required
@@ -116,7 +114,7 @@ ConVar sm_cac_bhop_ban_threshold = null;
 ConVar sm_cac_silentstrafe_ban_threshold = null;
 ConVar sm_cac_triggerbot_ban_threshold = null;
 ConVar sm_cac_triggerbot_log_threshold = null;
-ConVar sm_cac_macro_log_threshold = null = null;
+ConVar sm_cac_macro_log_threshold = null;
 ConVar sm_cac_autoshoot_log_threshold = null;
 ConVar sm_cac_perfectstrafe_ban_threshold = null;
 ConVar sm_cac_perfectstrafe_log_threshold = null;
@@ -189,12 +187,6 @@ public void SetConVars()
 	AutoExecConfig(true, "cowanticheat");
 }
 
-public APLRes AskPluginLoad2(Handle hMyself, bool bLate, char[] sError, int err_max)
-{
-	MarkNativeAsOptional("SourceBans_BanPlayer");
-	MarkNativeAsOptional("SBPP_BanPlayer");
-}
-
 public void OnAllPluginsLoaded()
 {
 	if(LibraryExists("sbpp_main"))
@@ -203,32 +195,18 @@ public void OnAllPluginsLoaded()
 
 		return;
 	}
-
-	if(LibraryExists("sourcebans"))
-	{
-		ban_method = SourceBans;
-
-		return;
-	}	
 }
 
 public void OnLibraryRemoved(const char[] name)
 {
-	if(StrEqual(name, "sbpp_main") || StrEqual(name, "sourcebans"))
+	if(StrEqual(name, "sbpp_main"))
 		ban_method = SourceModBan;
 }
 
 public void OnLibraryAdded(const char[] name)
 {
 	if(StrEqual(name, "sbpp_main"))
-	{
 		ban_method = SourceBansPP;
-
-		return;
-	}
-
-	if(StrEqual(name, "sourcebans"))
-		ban_method = SourceBans;
 }
 
 public void OnClientPutInServer(int client)
@@ -242,7 +220,7 @@ public void OnClientPutInServer(int client)
 			Handle request = CreateRequest_ProfileStatus(client);
 			SteamWorks_SendHTTPRequest(request);
 		}
-		if(cac_hourcheck.BoolValue)
+		if(sm_cac_hourcheck.BoolValue)
 		{
 			Handle request = CreateRequest_TimePlayed(client);
 			SteamWorks_SendHTTPRequest(request);
@@ -428,7 +406,7 @@ public Action Event_BombBeginDefuse(Handle event, const char[] name, bool dontBr
 {
 	int client = GetClientOfUserId( GetEventInt( event, "userid" ) );
 	
-	if(cac_instantdefuse.BoolValue)
+	if(sm_cac_instantdefuse.BoolValue)
     {
         g_fDefuseTime[client] = GetEngineTime();
     }
@@ -438,7 +416,7 @@ public Action Event_BombDefused(Handle event, const char[] name, bool dontBroadc
 {
 	int client = GetClientOfUserId( GetEventInt( event, "userid" ) );
 	
-	if(GetEngineTime() - g_fDefuseTime[client] < 3.5 && cac_instantdefuse.BoolValue)
+	if(GetEngineTime() - g_fDefuseTime[client] < 3.5 && sm_cac_instantdefuse.BoolValue)
     {
 		PrintToChatAll("[\x02CowAC\x01] \x0E%N \x01has been detected for Instant Defuse!", client);
 		
@@ -472,25 +450,25 @@ public Action OnPlayerRunCmd(int client, int &iButtons, int &iImpulse, float fVe
 		if(sm_cac_aimbot.BoolValue)
 			CheckAimbot(client, iButtons, fAngles, trace);
 		
-		if(game_engine == Engine_CSGO && cac_bhop.BoolValue && !sv_autobunnyhopping.BoolValue && !g_bAutoBhopEnabled[client])
+		if(game_engine == Engine_CSGO && sm_cac_bhop.BoolValue && !sv_autobunnyhopping.BoolValue && !g_bAutoBhopEnabled[client])
 			CheckBhop(client, iButtons);
 		
-		if(cac_silentstrafe.BoolValue)
+		if(sm_cac_silentstrafe.BoolValue)
 			CheckSilentStrafe(client, fVelocity[1]);
 		
-		if(cac_triggerbot.BoolValue)
+		if(sm_cac_triggerbot.BoolValue)
 			CheckTriggerBot(client, iButtons, trace);
 		
-		if(cac_macro.BoolValue)
+		if(sm_cac_macro.BoolValue)
 			CheckMacro(client, iButtons);
 		
-		if(cac_autoshoot.BoolValue)
+		if(sm_cac_autoshoot.BoolValue)
 			CheckAutoShoot(client, iButtons);
 			
-		if(cac_perfectstrafe.BoolValue)
+		if(sm_cac_perfectstrafe.BoolValue)
 			CheckPerfectStrafe(client, mouse[0], iButtons);
 			
-		if(cac_ahkstrafe.BoolValue)
+		if(sm_cac_ahkstrafe.BoolValue)
 			CheckAHKStrafe(client, mouse[0]);
 		
 		//CheckWallTrace(client, fAngles);
@@ -1213,19 +1191,14 @@ void BanPlayer(int client, int time, const char[] reason)
 {
 	switch(ban_method)
 	{
-		case default, SourceModBan:
-		{
-			BanClient(client, time, BANFLAG_AUTO, reason);
-		}
-
-		case SourceBans:
-		{
-			SourceBans_BanPlayer(SERVER, client, time, reason);
-		}
-
 		case SourceBansPP: 
 		{
 			SBPP_BanPlayer(SERVER, client, time, reason);
+		}
+
+		default:
+		{
+			BanClient(client, time, BANFLAG_AUTO, reason);
 		}
 	}
 }
