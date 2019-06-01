@@ -26,12 +26,17 @@ There is a config generated (/cfg/CowAntiCheat/CowAntiCheat.cfg)<br />
 - sm_bhopcheck / !bhopcheck
 
 # Installation
-    Install CowAntiCheat.smx into the /plugins/ folder inside of Sourcemod on your game server
-    Load the plugin manually, or change maps
-    Edit the Config (/cfg/CowAntiCheat/CowAntiCheat.cfg)
+    Copy cowanticheat.smx into the /plugins/ folder inside of Sourcemod folder on your game server,
+    Load the plugin manually, or change current map for autogenerate CowAC config,
+    Edit the Config (/cfg/CowAntiCheat/CowAntiCheat.cfg),
+    Reload the plugin manually, or change map to load prepared the config,
     Watch the bans roll in!
 
 # ChangeLog
+
+## [1.17] - 2019-06-04
+### Added
+- Ban player on changing clan tag in some short duration of time.
 
 ## [1.16] - 2018-04-12
 ### Added
