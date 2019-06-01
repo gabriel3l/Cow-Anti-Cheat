@@ -24,6 +24,7 @@
 
 #include <sourcemod>
 #include <sdktools>
+#include <cstrike>
 #include <SteamWorks>
 #undef REQUIRE_PLUGIN
 #tryinclude <sourcebanspp>
@@ -77,6 +78,8 @@ int g_iMousedxCount[MAXPLAYERS + 1];
 int g_iPerfSidemove[MAXPLAYERS + 1];
 int prev_buttons[MAXPLAYERS + 1];
 int g_iLastShotTick[MAXPLAYERS + 1];
+int PlayerChangeTagCountInTime[MAXPLAYERS + 1] = {0, ...};
+int PlayerChangeTagTime[MAXPLAYERS + 1] = {0, ...};
 
 float prev_angles[MAXPLAYERS + 1][3];
 float prev_sidemove[MAXPLAYERS + 1];
@@ -85,6 +88,9 @@ float g_fDefuseTime[MAXPLAYERS+1];
 float g_fJumpPos[MAXPLAYERS + 1];
 float g_Sensitivity[MAXPLAYERS + 1];
 float g_mYaw[MAXPLAYERS + 1];
+
+/* Plugin Cvars */
+ConVar sm_cac_debug = null;
 
 /* Game Cvars */
 ConVar sv_autobunnyhopping = null;
@@ -102,6 +108,7 @@ ConVar sm_cac_ahkstrafe = null;
 ConVar sm_cac_hourcheck = null;
 ConVar sm_cac_hourcheck_value = null;
 ConVar sm_cac_profilecheck = null;
+ConVar sm_cac_clantagchange = null;
 
 /* Detection Thresholds Cvars */
 ConVar sm_cac_aimbot_ban_threshold = null;
@@ -114,14 +121,19 @@ ConVar sm_cac_autoshoot_log_threshold = null;
 ConVar sm_cac_perfectstrafe_ban_threshold = null;
 ConVar sm_cac_perfectstrafe_log_threshold = null;
 ConVar sm_cac_ahkstrafe_log_threshold = null;
+ConVar sm_cac_clantagchange_threshold = null;
 
-/* Ban Times */
+/* Detection Duration Cvars */
+ConVar sm_cac_clantagchange_duration = null;
+
+/* Times */
 ConVar sm_cac_aimbot_bantime = null;
 ConVar sm_cac_bhop_bantime = null;
 ConVar sm_cac_silentstrafe_bantime = null;
 ConVar sm_cac_triggerbot_bantime = null;
 ConVar sm_cac_perfectstrafe_bantime = null;
 ConVar sm_cac_instantdefuse_bantime = null;
+ConVar sm_cac_clantagchange_bantime = null;
 
 public void OnPluginStart()
 {
@@ -133,7 +145,7 @@ public void OnPluginStart()
 		SetToDefaults(i);
 	
 	CreateTimer(0.1, getSettings, _, TIMER_REPEAT);
-	
+
 	SetConVars();
 
 	SetHooks();
@@ -150,6 +162,8 @@ public void SetConVars()
 	if(game_engine == Engine_CSGO)
 		sv_autobunnyhopping = FindConVar("sv_autobunnyhopping");
 	
+	sm_cac_debug = CreateConVar("sm_cac_debug", "0", "Enable debug mode (1 = Yes, 0 = No (Default))", FCVAR_NOTIFY, true, 0.0, true, 1.0);
+
 	sm_cac_aimbot = CreateConVar("sm_cac_aimbot", "1", "Enable aimbot detection (bans) (1 = Yes, 0 = No)", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	sm_cac_bhop = CreateConVar("sm_cac_bhop", "1", "Enable bhop detection (bans) (1 = Yes, 0 = No)", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	sm_cac_silentstrafe = CreateConVar("sm_cac_silentstrafe", "1", "Enable silent-strafe detection (bans) (1 = Yes, 0 = No)", FCVAR_NOTIFY, true, 0.0, true, 1.0);
@@ -162,7 +176,8 @@ public void SetConVars()
 	sm_cac_hourcheck = CreateConVar("sm_cac_hourcheck", "0", "Enable hour checker (1 = Yes, 0 = No)", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	sm_cac_hourcheck_value = CreateConVar("sm_cac_hourcheck_value", "50", "Minimum amount of playtime a user has to have on CS:GO (Default: 50)");
 	sm_cac_profilecheck = CreateConVar("sm_cac_profilecheck", "0", "Enable profile checker, this makes it so users need to have a public profile to connect. (1 = Yes, 0 = No)", FCVAR_NOTIFY, true, 0.0, true, 1.0);
-	
+	sm_cac_clantagchange = CreateConVar("sm_cac_clantagchange", "1", "Enable changing clan tag detection (1 = Yes, 0 = No)", FCVAR_NOTIFY, true, 0.0, true, 1.0);
+
 	sm_cac_aimbot_ban_threshold = CreateConVar("sm_cac_aimbot_ban_threshold", "5", "Threshold for aimbot ban detection (Default: 5)");
 	sm_cac_bhop_ban_threshold = CreateConVar("sm_cac_bhop_ban_threshold", "10", "Threshold for bhop ban detection (Default: 10)");
 	sm_cac_silentstrafe_ban_threshold = CreateConVar("sm_cac_silentstrafe_ban_threshold", "10", "Threshold for silent-strafe ban detection (Default: 10)");
@@ -173,6 +188,9 @@ public void SetConVars()
 	sm_cac_perfectstrafe_ban_threshold = CreateConVar("sm_cac_perfectstrafe_ban_threshold", "15", "Threshold for perfect strafe ban detection (Default: 15)");
 	sm_cac_perfectstrafe_log_threshold = CreateConVar("sm_cac_perfectstrafe_log_threshold", "10", "Threshold for perfect strafe log detection (Default: 10)");
 	sm_cac_ahkstrafe_log_threshold = CreateConVar("sm_cac_ahkstrafe_log_threshold", "25", "Threshold for AHK strafe log detection (Default: 25)");
+	sm_cac_clantagchange_threshold = CreateConVar("sm_cac_clantagchange_threshold", "10", "Threshold for changing clan tag detection (Default: 10)");
+
+	sm_cac_clantagchange_duration = CreateConVar("sm_cac_clantagchange_duration", "10", "Time duration for checking for changing clan tag detection (Default: 10)");
 	
 	sm_cac_aimbot_bantime = CreateConVar("sm_cac_aimbot_bantime", "0", "Ban time for aimbot detection (Default: 0)");
 	sm_cac_bhop_bantime = CreateConVar("sm_cac_bhop_bantime", "10080", "Ban time for bhop detection (Default: 10080)");
@@ -180,8 +198,15 @@ public void SetConVars()
 	sm_cac_triggerbot_bantime = CreateConVar("sm_cac_triggerbot_bantime", "0", "Ban time for triggerbot detection (Default: 0)");
 	sm_cac_perfectstrafe_bantime = CreateConVar("sm_cac_perfectstrafe_bantime", "0", "Ban time for perfect strafe detection (Default: 0)");
 	sm_cac_instantdefuse_bantime = CreateConVar("sm_cac_instantdefuse_bantime", "0", "Ban time for instant defuse detection (Default: 0)");
+	sm_cac_clantagchange_bantime = CreateConVar("sm_cac_clantagchange_bantime", "1", "Ban time for changing clan tag in minutes (Default: 1)");
 
 	AutoExecConfig(true, "cowanticheat");
+}
+
+public void OnClientDisconnect_Post(int client)
+{
+	PlayerChangeTagCountInTime[client] = 0;
+	PlayerChangeTagTime[client] = 0;
 }
 
 public void OnClientPutInServer(int client)
@@ -350,6 +375,59 @@ public Action getSettings(Handle timer)
 				QueryClientConVar(i, "m_yaw", ConVar_QueryClient, i);
 			}
 		}
+	}
+}
+
+public Action OnClientCommandKeyValues(int client, KeyValues kv) 
+{
+	if(!IsValidClient(client))
+		return Plugin_Continue;
+
+	char command[64];
+	if(!kv.GetSectionName(command, 64))
+		return Plugin_Continue;
+
+	if(StrEqual(command, "ClanTagChanged", false)) 
+		OnPlayerChangeTag(client);
+
+	return Plugin_Continue;
+}
+
+public void OnPlayerChangeTag(int client)
+{
+	if(!IsValidClient(client) || !sm_cac_clantagchange.BoolValue)
+		return;
+
+	/*char name[16];
+	Format(name, 16, "%N", client);
+
+	if(!StrEqual(name, "Nerus"))
+		return;*/
+
+	int current_time = GetTime(); 
+
+	if(current_time > PlayerChangeTagTime[client])
+	{
+		int different = current_time - PlayerChangeTagTime[client];
+
+		if(sm_cac_debug.BoolValue)
+			PrintToServer("Current stamp: %d, Last stamp: %d, Diff stamp: %d, Count check: %d", current_time, PlayerChangeTagTime[client], different, PlayerChangeTagCountInTime[client]);
+
+		PlayerChangeTagTime[client] = current_time;
+
+		if(different < sm_cac_clantagchange_duration.IntValue)
+		{
+			PlayerChangeTagCountInTime[client] += 1; // Add in scope of time
+			if(PlayerChangeTagCountInTime[client] > sm_cac_clantagchange_threshold.IntValue)
+			{
+				char reason[256];
+				Format(reason, 256, "[CowAC] %N has kicked for change Clan Tag in short period time!", client);
+
+				BanPlayer(client, sm_cac_clantagchange_bantime.IntValue, reason);
+			}
+		}
+		else
+			PlayerChangeTagCountInTime[client] = 0; // Reset
 	}
 }
 
