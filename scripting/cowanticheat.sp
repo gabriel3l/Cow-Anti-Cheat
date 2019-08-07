@@ -18,7 +18,7 @@
 #pragma semicolon 1
 
 #define PLUGIN_AUTHOR "CodingCow"
-#define PLUGIN_VERSION "1.17"
+#define PLUGIN_VERSION "1.18"
 #define JUMP_HISTORY 30
 #define SERVER 0
 
@@ -108,6 +108,7 @@ ConVar sm_cac_ahkstrafe = null;
 ConVar sm_cac_hourcheck = null;
 ConVar sm_cac_hourcheck_value = null;
 ConVar sm_cac_profilecheck = null;
+ConVar sm_cac_steamapi_key = null;
 ConVar sm_cac_clantagchange = null;
 
 /* Detection Thresholds Cvars */
@@ -176,6 +177,8 @@ public void SetConVars()
 	sm_cac_hourcheck = CreateConVar("sm_cac_hourcheck", "0", "Enable hour checker (1 = Yes, 0 = No)", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	sm_cac_hourcheck_value = CreateConVar("sm_cac_hourcheck_value", "50", "Minimum amount of playtime a user has to have on CS:GO (Default: 50)");
 	sm_cac_profilecheck = CreateConVar("sm_cac_profilecheck", "0", "Enable profile checker, this makes it so users need to have a public profile to connect. (1 = Yes, 0 = No)", FCVAR_NOTIFY, true, 0.0, true, 1.0);
+	sm_cac_steamapi_key = CreateConVar("sm_cac_steamapi_key", "", "Need for ProfileCheck and HourCheck. (https://steamcommunity.com/dev/apikey)", FCVAR_NOTIFY);
+	
 	sm_cac_clantagchange = CreateConVar("sm_cac_clantagchange", "1", "Enable changing clan tag detection (1 = Yes, 0 = No)", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 
 	sm_cac_aimbot_ban_threshold = CreateConVar("sm_cac_aimbot_ban_threshold", "5", "Threshold for aimbot ban detection (Default: 5)");
@@ -1018,7 +1021,8 @@ public void CheckAHKStrafe(int client, int mouse)
 Handle CreateRequest_TimePlayed(int client)
 {
 	char request_url[256];
-	Format(request_url, sizeof(request_url), "http://www.cowanticheat.com/CheckTime.php");
+	
+	Format(request_url, sizeof(request_url), "http://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key=%s",sm_cac_steamapi_key);
 	Handle request = SteamWorks_CreateHTTPRequest(k_EHTTPMethodGET, request_url);
 	
 	char steamid[64];
@@ -1061,7 +1065,7 @@ public int TimePlayed_OnHTTPResponse(Handle request, bool bFailure, bool bReques
 Handle CreateRequest_ProfileStatus(int client)
 {
 	char request_url[256];
-	Format(request_url, sizeof(request_url), "http://www.cowanticheat.com/CheckProfile.php");
+	Format(request_url, sizeof(request_url), "http://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key=%s",sm_cac_steamapi_key);
 	Handle request = SteamWorks_CreateHTTPRequest(k_EHTTPMethodGET, request_url);
 	
 	char steamid[64];
